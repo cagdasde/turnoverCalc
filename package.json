@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "@react-navigation/native": "^6.1.17",
+    "axios": "^1.6.8",
+    "expo-linear-gradient": "^12.7.2",
+    "nativewind": "^2.0.11",
+    "react-native-heroicons": "^4.0.0",
+    "react-native-progress": "^5.0.1",
+    "react-native-snap-carousel": "^3.9.1"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.3.2"
+  }
+}
