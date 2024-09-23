@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import CheckBox from 'expo-checkbox';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getDaysInMonth, format } from 'date-fns';
+import { getDaysInMonth, format, getDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
 const App = () => {
@@ -11,6 +11,8 @@ const App = () => {
   const [ortalamaGunlukCiro, setOrtalamaGunlukCiro] = useState('');
   const [yuksekGunler, setYuksekGunler] = useState([]);
   const [cirolar, setCirolar] = useState([]);
+
+  const gunIsimleri = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
   useEffect(() => {
     const loadStoredData = async () => {
@@ -38,42 +40,27 @@ const App = () => {
     const ortalamaCiro = parseFloat(ortalamaGunlukCiro);
     const gunSayisi = getDaysInMonth(new Date(year, month - 1));
     const toplamCiro = ortalamaCiro * gunSayisi;
-    const maxFark = ortalamaCiro * 0.05;
+    const maxFark = ortalamaCiro * 0.05; // Fark %5'i geçmesin
 
-    let toplamYuksekCiro = 0;
-    let toplamDusukCiro = 0;
-
-    const yuksekGunAdedi = yuksekGunler.length;
-    const dusukGunAdedi = gunSayisi - yuksekGunAdedi;
-
-    // Yüksek ve düşük günlerin ortalama cirosunu hesapla
-    const yuksekGunOrtCiro = ortalamaCiro + maxFark;
-    const dusukGunOrtCiro = ortalamaCiro - maxFark;
-
-    const gunlukCirolar = [];
     let kümülatifToplam = 0;
 
-    for (let i = 1; i <= gunSayisi; i++) {
-      const currentDay = new Date(year, month - 1, i).getDay();
-      let ciro;
+    // Belirli bir aya ait tüm günleri ve haftalık gün sıralarını hesapla
+    const gunlukCirolar = Array.from({ length: gunSayisi }, (_, i) => {
+      const currentDate = new Date(year, month - 1, i + 1);
+      const dayIndex = getDay(currentDate);
 
-      if (yuksekGunler.includes(currentDay)) {
-        ciro = (Math.random() * (yuksekGunOrtCiro * 1.05 - yuksekGunOrtCiro * 0.95) + yuksekGunOrtCiro * 0.95).toFixed(2);
-      } else {
-        ciro = (Math.random() * (dusukGunOrtCiro * 1.05 - dusukGunOrtCiro * 0.95) + dusukGunOrtCiro * 0.95).toFixed(2);
-      }
+      // Gün ismi seçimine göre yüksek ve düşük ciro ayarlaması
+      const ciro = yuksekGunler.includes(gunIsimleri[dayIndex])
+        ? (ortalamaCiro + Math.random() * maxFark).toFixed(0) // Yüksek ciro günleri
+        : (ortalamaCiro - Math.random() * maxFark).toFixed(0); // Düşük ciro günleri
 
-      ciro = parseFloat(ciro);
-      kümülatifToplam += ciro;
-      gunlukCirolar.push({ gun: i, ciro, kümülatifToplam: kümülatifToplam.toFixed(2) });
-    }
+      kümülatifToplam += parseFloat(ciro);
+      return { gun: i + 1, gunIsmi: gunIsimleri[dayIndex], ciro, kümülatifToplam: kümülatifToplam.toFixed(0) };
+    });
 
-    const toplamHesaplananCiro = gunlukCirolar.reduce((acc, item) => acc + item.ciro, 0);
+    const toplamHesaplananCiro = gunlukCirolar.reduce((acc, item) => acc + parseFloat(item.ciro), 0);
 
-    if (toplamHesaplananCiro > toplamCiro) {
-      Alert.alert('Hata', 'Hesaplanan toplam ciro, aylık toplam ciroyu geçiyor.');
-      return;
-    }
+  
 
     setCirolar(gunlukCirolar);
 
@@ -111,34 +98,16 @@ const App = () => {
         />
         <View style={styles.checkboxContainer}>
           <Text>Yüksek Ciro Günleri:</Text>
-          <View style={styles.checkboxRow}>
-            <CheckBox value={yuksekGunler.includes(0)} onValueChange={() => toggleGun(0)} />
-            <Text>Pazar</Text>
-          </View>
-          <View style={styles.checkboxRow}>
-            <CheckBox value={yuksekGunler.includes(1)} onValueChange={() => toggleGun(1)} />
-            <Text>Pazartesi</Text>
-          </View>
-          <View style={styles.checkboxRow}>
-            <CheckBox value={yuksekGunler.includes(2)} onValueChange={() => toggleGun(2)} />
-            <Text>Salı</Text>
-          </View>
-          <View style={styles.checkboxRow}>
-            <CheckBox value={yuksekGunler.includes(3)} onValueChange={() => toggleGun(3)} />
-            <Text>Çarşamba</Text>
-          </View>
-          <View style={styles.checkboxRow}>
-            <CheckBox value={yuksekGunler.includes(4)} onValueChange={() => toggleGun(4)} />
-            <Text>Perşembe</Text>
-          </View>
-          <View style={styles.checkboxRow}>
-            <CheckBox value={yuksekGunler.includes(5)} onValueChange={() => toggleGun(5)} />
-            <Text>Cuma</Text>
-          </View>
-          <View style={styles.checkboxRow}>
-            <CheckBox value={yuksekGunler.includes(6)} onValueChange={() => toggleGun(6)} />
-            <Text>Cumartesi</Text>
-          </View>
+          {gunIsimleri.map((day, index) => (
+            <TouchableOpacity key={index} style={styles.checkboxRow} onPress={() => toggleGun(day)}>
+              <CheckBox
+                value={yuksekGunler.includes(day)}
+                onValueChange={() => toggleGun(day)}
+                style={styles.checkbox}
+              />
+              <Text style={styles.checkboxLabel}>{day}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
         <Button title="Hesapla ve Kaydet" onPress={hesapla} />
       </View>
@@ -148,7 +117,7 @@ const App = () => {
           {cirolar.map((item) => (
             <View key={item.gun} style={styles.item}>
               <Text style={styles.text}>
-                {item.gun}. {format(new Date(year, month - 1, item.gun), 'dd MMMM EEEE', { locale: tr })} - {item.ciro} TL (Kümülatif: {item.kümülatifToplam} TL)
+                {format(new Date(year, month - 1, item.gun), 'dd MMMM EEEE', { locale: tr })} - {item.ciro} TL (Kümülatif: {item.kümülatifToplam} TL)
               </Text>
             </View>
           ))}
@@ -187,6 +156,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: 5,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    marginRight: 12,
+  },
+  checkboxLabel: {
+    fontSize: 18,
   },
   subtitle: {
     fontSize: 20,
